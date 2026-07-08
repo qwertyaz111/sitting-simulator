@@ -577,6 +577,8 @@
 
     function setupControls() {
         const c = document.getElementById('canvas-container');
+        let initialPinchDist = null;
+
         const move = (dx, dy) => {
             rotation.y -= dx * 0.005; rotation.x -= dy * 0.005;
             rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, rotation.x));
@@ -584,11 +586,56 @@
         c.addEventListener('mousedown', () => isDragging = true);
         window.addEventListener('mouseup', () => isDragging = false);
         window.addEventListener('mousemove', e => { if(isDragging) move(e.movementX, e.movementY); });
-        c.addEventListener('touchstart', e => { isDragging = true; previousTouch = e.touches[0]; }, { passive: false });
-        window.addEventListener('touchend', () => isDragging = false);
+        
+        c.addEventListener('wheel', e => {
+            if (currentView === '3rd') {
+                camDist += e.deltaY * 0.002;
+                camDist = Math.max(0.5, Math.min(10, camDist));
+            } else {
+                camera.fov += e.deltaY * 0.05;
+                camera.fov = Math.max(20, Math.min(100, camera.fov));
+                camera.updateProjectionMatrix();
+            }
+        }, { passive: true });
+
+        c.addEventListener('touchstart', e => { 
+            isDragging = true; 
+            if (e.touches.length === 1) {
+                previousTouch = e.touches[0]; 
+                initialPinchDist = null;
+            } else if (e.touches.length === 2) {
+                initialPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            }
+        }, { passive: false });
+        window.addEventListener('touchend', () => {
+            isDragging = false;
+            initialPinchDist = null;
+        });
         window.addEventListener('touchmove', e => {
-            if(!isDragging || !previousTouch) return;
-            const touch = e.touches[0]; move(touch.clientX - previousTouch.clientX, touch.clientY - previousTouch.clientY); previousTouch = touch;
+            if(!isDragging) return;
+            if (e.touches.length === 1 && previousTouch) {
+                const touch = e.touches[0]; 
+                move(touch.clientX - previousTouch.clientX, touch.clientY - previousTouch.clientY); 
+                previousTouch = touch;
+            } else if (e.touches.length === 2 && initialPinchDist !== null) {
+                const currentDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const diff = currentDist - initialPinchDist;
+                if (currentView === '3rd') {
+                    camDist -= diff * 0.005;
+                    camDist = Math.max(0.5, Math.min(10, camDist));
+                } else {
+                    camera.fov -= diff * 0.1;
+                    camera.fov = Math.max(20, Math.min(100, camera.fov));
+                    camera.updateProjectionMatrix();
+                }
+                initialPinchDist = currentDist;
+            }
         }, { passive: false });
     }
 
@@ -596,6 +643,10 @@
         const order = ['3rd', 'A', 'B'];
         currentView = order[(order.indexOf(currentView) + 1) % order.length];
         rotation.x = 0; rotation.y = 0; 
+        if (camera) {
+            camera.fov = 50;
+            camera.updateProjectionMatrix();
+        }
         updateScene();
     }
 
