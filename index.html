@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🪑お座りシミュレーター</title>
+    <title>💺お座りシミュレーター</title>
     <style>
         :root { --panel-width: 300px; }
         body { margin: 0; font-family: 'Helvetica Neue', Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background: #ffffff; overflow: hidden; }
@@ -94,7 +94,7 @@
 
 <div id="ui-panel">
     <div class="panel-header" onclick="togglePanel()">
-        <h1 class="app-title">🪑お座りシミュレーター</h1>
+        <h1 class="app-title">💺お座りシミュレーター</h1>
         <span id="toggle-text">閉じる</span>
     </div>
 
@@ -131,6 +131,7 @@
                 <button class="btn-anim active" id="btn-counter" onclick="setMode('counter')">カウンター</button>
                 <button class="btn-anim" id="btn-bench" onclick="setMode('bench')">ベンチ</button>
                 <button class="btn-anim" id="btn-faceToFace" onclick="setMode('faceToFace')">対面</button>
+                <button class="btn-anim" id="btn-piano" onclick="setMode('piano')">ピアノ連弾</button>
                 <button class="btn-anim" id="btn-schoolSide" onclick="setMode('schoolSide')">学校（横）</button>
                 <button class="btn-anim" id="btn-schoolRow" onclick="setMode('schoolRow')">学校（縦）</button>
             </div>
@@ -138,6 +139,7 @@
                 <option value="counter" selected>カウンター席</option>
                 <option value="bench">ベンチ席</option>
                 <option value="faceToFace">対面席</option>
+                <option value="piano">ピアノ連弾</option>
                 <option value="schoolSide">学校（横）</option>
                 <option value="schoolRow">学校（縦）</option>
             </select>
@@ -189,6 +191,7 @@
 
     const CHAIR_HEIGHT = 0.42; 
     const TABLE_HEIGHT = 0.72;
+    const PIANO_HEIGHT = 0.73;
 
     function init() {
         scene = new THREE.Scene();
@@ -239,13 +242,13 @@
         const distContainer = document.getElementById('distance-container');
         const tableContainer = document.getElementById('table-checkbox-container');
         
-        if (mode === 'counter' || mode === 'bench' || mode === 'schoolSide' || mode === 'schoolRow') {
+        if (mode === 'counter' || mode === 'bench' || mode === 'schoolSide' || mode === 'schoolRow' || mode === 'piano') {
             distContainer.style.display = 'flex';
         } else {
             distContainer.style.display = 'none';
         }
 
-        if (mode === 'schoolSide' || mode === 'schoolRow') {
+        if (mode === 'schoolSide' || mode === 'schoolRow' || mode === 'piano') {
             tableContainer.style.display = 'none'; 
         } else {
             tableContainer.style.display = 'flex';
@@ -279,6 +282,9 @@
 
         const woodMat = new THREE.MeshPhongMaterial({ color: 0xddcbbb });
         const pipeMat = new THREE.MeshPhongMaterial({ color: 0x777777 });
+        const blackPianoMat = new THREE.MeshPhongMaterial({ color: 0x1a1a1a, roughness: 0.2 });
+        const whiteKeyMat = new THREE.MeshPhongMaterial({ color: 0xffffff });
+        const blackKeyMat = new THREE.MeshPhongMaterial({ color: 0x000000 });
         const showTable = document.getElementById('showTable').checked;
 
         const hA = parseFloat(document.getElementById('heightA').value)||158, hB = parseFloat(document.getElementById('heightB').value)||171.5;
@@ -289,16 +295,19 @@
 
         let inputDist = parseFloat(document.getElementById('sittingDistance').value) || 0.75;
         
-        function createChair(x, z, ry) {
+        function createChair(x, z, ry, isPianoBench = false) {
             const chair = new THREE.Group();
-            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.03, 0.4), woodMat);
+            const w = isPianoBench ? 1.2 : 0.4;
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(w, 0.03, 0.4), woodMat);
             seat.position.y = CHAIR_HEIGHT;
             chair.add(seat);
-            const back = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.03), woodMat);
-            back.position.set(0, CHAIR_HEIGHT + 0.2, -0.185);
-            chair.add(back);
+            if (!isPianoBench) {
+                const back = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.03), woodMat);
+                back.position.set(0, CHAIR_HEIGHT + 0.2, -0.185);
+                chair.add(back);
+            }
             const legGeo = new THREE.CylinderGeometry(0.015, 0.015, CHAIR_HEIGHT);
-            const positions = [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]];
+            const positions = [[-w/2 + 0.02, -0.18], [w/2 - 0.02, -0.18], [-w/2 + 0.02, 0.18], [w/2 - 0.02, 0.18]];
             positions.forEach(p => {
                 const leg = new THREE.Mesh(legGeo, pipeMat);
                 leg.position.set(p[0], CHAIR_HEIGHT / 2, p[1]);
@@ -405,6 +414,34 @@
             createSchoolDesk(0, -safeDist / 2 + 0.35);
             createChair(0, safeDist / 2, 0);       
             createSchoolDesk(0, safeDist / 2 + 0.35);
+        } else if (mode === 'piano') {
+            const piano = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 0.5), blackPianoMat);
+            body.position.set(0, PIANO_HEIGHT + 0.1, 0.4);
+            piano.add(body);
+            const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.05, PIANO_HEIGHT + 0.4, 0.65), blackPianoMat);
+            sideL.position.set(-0.825, (PIANO_HEIGHT + 0.4)/2, 0.325);
+            piano.add(sideL);
+            const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.05, PIANO_HEIGHT + 0.4, 0.65), blackPianoMat);
+            sideR.position.set(0.825, (PIANO_HEIGHT + 0.4)/2, 0.325);
+            piano.add(sideR);
+            const whiteKeys = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.02, 0.15), whiteKeyMat);
+            whiteKeys.position.set(0, PIANO_HEIGHT, 0.075);
+            piano.add(whiteKeys);
+            
+            let keyIdx = 0;
+            for (let i = -75; i <= 75; i += 3) {
+                const patternIdx = keyIdx % 7;
+                if (patternIdx !== 2 && patternIdx !== 6) { 
+                    const blackKey = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.025, 0.1), blackKeyMat);
+                    blackKey.position.set(i * 0.01, PIANO_HEIGHT + 0.015, 0.1);
+                    piano.add(blackKey);
+                }
+                keyIdx++;
+            }
+            piano.position.z += 0.2;
+            furnitureGroup.add(piano);
+            createChair(0, -0.3, 0, true);
         }
     }
 
@@ -497,19 +534,49 @@
         personB = createMannequin(document.getElementById('colorB').value, hB, document.getElementById('genderB').value, document.getElementById('nameB').value, 'B');
         
         let displayDist = dist;
-        if (mode === 'counter' || mode === 'bench' || mode === 'schoolSide') {
+        if (mode === 'counter' || mode === 'bench' || mode === 'schoolSide' || mode === 'piano') {
             const bodyMinDist = (personA.userData.torsoW + personB.userData.torsoW) * 0.5;
             let minSafeDist = bodyMinDist;
             if (mode === 'counter') minSafeDist = Math.max(bodyMinDist, 0.4);
             if (mode === 'schoolSide') minSafeDist = Math.max(bodyMinDist, 0.6);
+            if (mode === 'piano') minSafeDist = Math.max(bodyMinDist, 0.35);
             
-            const safeDist = Math.max(dist, minSafeDist);
+            let safeDist = Math.max(dist, minSafeDist);
+            
+            // ピアノ連弾時はベンチ椅子の幅(1.2m)からはみ出して空気椅子にならないよう、最大値に安全制限を設ける
+            if (mode === 'piano') {
+                const maxSafeDist = 1.2 - (personA.userData.torsoW + personB.userData.torsoW) * 0.5;
+                if (safeDist > maxSafeDist) {
+                    safeDist = Math.max(minSafeDist, maxSafeDist);
+                }
+            }
+            
             displayDist = safeDist;
 
-            personA.position.set(-safeDist / 2, 0, 0);
-            personA.rotation.set(0, 0, 0);
-            personB.position.set(safeDist / 2, 0, 0);
-            personB.rotation.set(0, 0, 0);
+            if (mode === 'piano') {
+                personA.position.set(-safeDist / 2, 0, -0.3);
+                personA.rotation.set(0, 0, 0);
+                personB.position.set(safeDist / 2, 0, -0.3);
+                personB.rotation.set(0, 0, 0);
+                
+                const armLenA = hA * 0.01 * 0.38;
+                const shoulderYA = CHAIR_HEIGHT + (hA * 0.01 * 0.37) - ((personA.userData.torsoW) * 0.15);
+                const diffYA = shoulderYA - PIANO_HEIGHT;
+                const angleA = -Math.acos(Math.max(-1, Math.min(1, diffYA / armLenA)));
+                personA.arms.forEach(arm => arm.rotation.set(isNaN(angleA) ? -Math.PI / 3.0 : angleA, 0, 0));
+
+                const armLenB = hB * 0.01 * 0.38;
+                const shoulderYB = CHAIR_HEIGHT + (hB * 0.01 * 0.37) - ((personB.userData.torsoW) * 0.15);
+                const diffYB = shoulderYB - PIANO_HEIGHT;
+                const angleB = -Math.acos(Math.max(-1, Math.min(1, diffYB / armLenB)));
+                personB.arms.forEach(arm => arm.rotation.set(isNaN(angleB) ? -Math.PI / 3.0 : angleB, 0, 0));
+                
+            } else {
+                personA.position.set(-safeDist / 2, 0, 0);
+                personA.rotation.set(0, 0, 0);
+                personB.position.set(safeDist / 2, 0, 0);
+                personB.rotation.set(0, 0, 0);
+            }
         } else if (mode === 'faceToFace') {
             personA.position.set(0, 0, -0.55);
             personA.rotation.set(0, 0, 0);
@@ -655,7 +722,7 @@
         const hA = parseFloat(document.getElementById('heightA').value) || 158.0, hB = parseFloat(document.getElementById('heightB').value) || 171.5;
         const modeName = {
             'counter':'カウンター席','bench':'ベンチ席','faceToFace':'対面席',
-            'schoolSide':'学校の席(横)','schoolRow':'学校の席(縦)'
+            'piano':'ピアノ連弾','schoolSide':'学校の席(横)','schoolRow':'学校の席(縦)'
         }[document.getElementById('sittingMode').value];
         window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${nA}(${hA.toFixed(1)}cm)と${nB}(${hB.toFixed(1)}cm)の${modeName}座り体格差！\n#お座りシミュレーター`)}&url=${encodeURIComponent(window.location.href)}`, '_blank');
     }
