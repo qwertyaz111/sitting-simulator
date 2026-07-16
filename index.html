@@ -81,7 +81,6 @@
         .usage-notes { font-size: 10px; color: #999; margin-top: 12px; line-height: 1.5; text-align: center; }
 
         .info-box { background: #ffffff; padding: 15px; border-radius: 12px; margin-top: 12px; border: 1px solid #eee; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
-        .info-box { background: #ffffff; padding: 15px; border-radius: 12px; margin-top: 12px; border: 1px solid #eee; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
         .info-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; }
         .info-row:not(:last-child) { border-bottom: 1px dashed #eee; margin-bottom: 4px; }
         .info-label { color: #555; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; }
@@ -730,7 +729,6 @@
         personA = createMannequin(document.getElementById('colorA').value, hA, document.getElementById('genderA').value, document.getElementById('nameA').value, 'A');
         personB = createMannequin(document.getElementById('colorB').value, hB, document.getElementById('genderB').value, document.getElementById('nameB').value, 'B');
         
-        // デフォルトでは頭の傾き（うつむき）をリセット
         personA.headParts.rotation.set(0, 0, 0);
         personB.headParts.rotation.set(0, 0, 0);
 
@@ -759,7 +757,6 @@
                 personB.position.set(safeDist / 2, 0, -0.3);
                 personB.rotation.set(0, 0, 0);
                 
-                // ピアノ演奏時、手の先（鍵盤）に視線を落とすよううつむかせる演出
                 personA.headParts.rotation.x = 0.35;
                 personB.headParts.rotation.x = 0.35;
 
@@ -798,21 +795,17 @@
         stageGroup.add(personA);
         stageGroup.add(personB);
 
-        // --- 二人の最短距離（体表面同士の隙間）を計算して表示 ---
         let shortestDist = displayDist;
         const widthHalfA = personA.userData.torsoW * 0.5;
         const widthHalfB = personB.userData.torsoW * 0.5;
         if (mode === 'counter' || mode === 'bench' || mode === 'schoolSide' || mode === 'piano') {
-            // 横並び配置：中心間距離から、それぞれの「肩幅の半分」を引く
             shortestDist = displayDist - (widthHalfA + widthHalfB);
         } else if (mode === 'faceToFace' || mode === 'schoolRow') {
-            // 前後並び配置：中心間距離から、それぞれの「体の厚みの半分（肩幅の4分の1）」を引く
             shortestDist = displayDist - (widthHalfA * 0.5 + widthHalfB * 0.5);
         }
-        shortestDist = Math.max(0, shortestDist); // 計算上のめり込み防止用ガード
+        shortestDist = Math.max(0, shortestDist);
 
         document.getElementById('distance-val').innerText = ` (${Math.round(shortestDist * 100)}cm)`;
-        // ----------------------------------------------------
 
         if (personA && personB) {
             personA.headParts.visible = (currentView !== 'A');
@@ -892,10 +885,6 @@
             if (currentView === '3rd') {
                 camDist += e.deltaY * 0.002;
                 camDist = Math.max(0.5, Math.min(10, camDist));
-            } else {
-                camera.fov += e.deltaY * 0.05;
-                camera.fov = Math.max(20, Math.min(100, camera.fov));
-                camera.updateProjectionMatrix();
             }
         }, { passive: true });
 
@@ -921,20 +910,14 @@
                 const touch = e.touches[0]; 
                 move(touch.clientX - previousTouch.clientX, touch.clientY - previousTouch.clientY); 
                 previousTouch = touch;
-            } else if (e.touches.length === 2 && initialPinchDist !== null) {
+            } else if (e.touches.length === 2 && initialPinchDist !== null && currentView === '3rd') {
                 const currentDist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
                     e.touches[0].clientY - e.touches[1].clientY
                 );
                 const diff = currentDist - initialPinchDist;
-                if (currentView === '3rd') {
-                    camDist -= diff * 0.005;
-                    camDist = Math.max(0.5, Math.min(10, camDist));
-                } else {
-                    camera.fov -= diff * 0.1;
-                    camera.fov = Math.max(20, Math.min(100, camera.fov));
-                    camera.updateProjectionMatrix();
-                }
+                camDist -= diff * 0.005;
+                camDist = Math.max(0.5, Math.min(10, camDist));
                 initialPinchDist = currentDist;
             }
         }, { passive: false });
