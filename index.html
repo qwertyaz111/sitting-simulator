@@ -8,16 +8,33 @@
         :root { --panel-width: 300px; }
         body { margin: 0; font-family: 'Helvetica Neue', Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background: #ffffff; overflow: hidden; }
         #ui-panel {
-            position: absolute; top: 10px; left: 10px; width: var(--panel-width);
-            background: rgba(255, 255, 255, 0.95); padding: 15px;
-            border-radius: 15px; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            max-height: calc(100vh - 40px); overflow-y: auto;
-            border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            touch-action: auto;
+            position: absolute; 
+            top: 10px; 
+            left: 10px; 
+            width: var(--panel-width);
+            max-height: calc(100vh - 20px);
+            max-height: calc(100dvh - 20px); /* アドレスバーの可変長に対応 */
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 15px; 
+            padding-bottom: 40px; /* 一番下の要素が隠れないよう余白を確保 */
+            border-radius: 15px; 
+            z-index: 100; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch; /* iOSでの滑らかなスクロール */
+            touch-action: pan-y; /* 縦スワイプ操作（スクロール）を許可 */
+            border: 1px solid rgba(255,255,255,0.3); 
+            backdrop-filter: blur(10px); 
+            -webkit-backdrop-filter: blur(10px);
+            box-sizing: border-box;
+            transition: all 0.2s ease-out; /* 開閉アニメーションを滑らかに */
         }
         #canvas-container { width: 100vw; height: 100vh; cursor: move; touch-action: none; }
 
-        @media screen and (max-width: 480px) { :root { --panel-width: 85vw; } }
+        @media screen and (max-width: 480px) { 
+            :root { --panel-width: calc(100vw - 20px); }
+            #ui-panel { left: 10px; right: 10px; }
+        }
         
         @media screen and (orientation: landscape) and (max-height: 500px) {
             :root { --panel-width: 260px; }
@@ -26,11 +43,32 @@
             .input-group { padding: 8px; margin-bottom: 5px; }
         }
 
-        .panel-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
-        #toggle-text { font-size: 12px; font-weight: bold; color: #666; background: #eee; padding: 2px 8px; border-radius: 10px; }
+        .panel-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            cursor: pointer; 
+            user-select: none; 
+            gap: 10px; 
+        }
+        #toggle-text { 
+            font-size: 12px; 
+            font-weight: bold; 
+            color: #666; 
+            background: #eee; 
+            padding: 4px 10px; 
+            border-radius: 10px; 
+            white-space: nowrap; /* テキストの意図しない改行を防止 */
+        }
         .collapsed #ui-content { display: none; }
 
-        .app-title { font-size: 1.4rem; margin: 0; color: #333; text-align: center; font-weight: bold; flex-grow: 1; }
+        .app-title { 
+            font-size: 1.2rem; 
+            margin: 0; 
+            color: #333; 
+            font-weight: bold; 
+            white-space: nowrap; /* タイトルの改行を防止 */
+        }
         .app-description { font-size: 11px; color: #777; margin-top: 8px; margin-bottom: 5px; line-height: 1.5; text-align: center; }
         
         .input-group { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; margin-bottom: 10px; }
@@ -40,7 +78,6 @@
         .group-layout { background: #f9f9f9; border: 1px solid #eee; }
         .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
         .section-header strong { font-size: 15px; color: #444; }
-        .input-row { display: flex; gap: 8px; align-items: flex-end; width: 100%; }
         .input-row { display: flex; gap: 8px; align-items: flex-end; width: 100%; }
         .input-item { display: flex; flex-direction: column; flex: 1; min-width: 0; }
         .hint { font-size: 10px; color: #999; margin-bottom: 2px; font-weight: bold; }
@@ -87,7 +124,19 @@
         .info-value { font-weight: 800; font-size: 18px; color: #2c3e50; font-variant-numeric: tabular-nums; }
         .unit { font-size: 11px; margin-left: 3px; color: #7f8c8d; font-weight: normal; }
         
-        #view-label { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.7); color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; z-index: 100; pointer-events: none; }
+        #view-label { 
+            position: absolute; 
+            bottom: 20px; 
+            right: 15px; 
+            background: rgba(0,0,0,0.7); 
+            color: white; 
+            padding: 8px 16px; 
+            border-radius: 20px; 
+            font-size: 12px; 
+            font-weight: bold; 
+            z-index: 90; 
+            pointer-events: none; 
+        }
         .crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; border: 2px solid rgba(0,0,0,0.15); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
 
         .piano-music-control { display: none; margin-top: 8px; margin-bottom: 4px; }
@@ -102,6 +151,20 @@
         .btn-music.playing { 
             background: #e74c3c; 
             box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4); 
+        }
+
+        /* 折りたたんだ（閉じた）時の専用スタイル */
+        #ui-panel.collapsed {
+            max-height: none !important;
+            padding: 10px 15px !important;
+            overflow: hidden !important;
+            width: auto;
+            max-width: calc(100vw - 20px);
+        }
+
+        @media screen and (max-width: 480px) { 
+            /* スマホ表示で閉じた場合、右端の固定を解除してタイトルサイズへ収める */
+            #ui-panel.collapsed { right: auto; }
         }
     </style>
 </head>
@@ -196,7 +259,7 @@
     </div>
 </div>
 
-<div id="view-label">三人称視点</div>
+<div id="view-label"></div>
 <div class="crosshair" id="crosshair" style="display:none;"></div>
 <div id="canvas-container"></div>
 
