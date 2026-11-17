@@ -1055,7 +1055,7 @@
             anchor.add(upper);
             const elbow = new THREE.Group();
             elbow.position.y = -upperLen;
-            const fore = new THREE.Mesh(new THREE.BoxGeometry(torsoW*0.26, foreLen, torsoW*0.26), bodyMat);
+            const fore = new THREE.Mesh(new THREE.BoxGeometry(torsoW*0.3, foreLen, torsoW*0.3), bodyMat);
             fore.position.y = -foreLen * 0.5;
             elbow.add(fore);
             anchor.add(elbow);
