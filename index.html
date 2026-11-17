@@ -676,6 +676,29 @@
         }));
     })();
 
+    // ピアノ連弾用: 声部ごとに発音点を上声/下声に分けた手の移動先
+    const PIANO_HAND_STEPS = { 0: [], 1: [] };
+    for (const v of [0, 1]) {
+        const byOnset = new Map();
+        for (const e of ODE9_EVENTS) {
+            if (e[3] !== v) continue;
+            if (!byOnset.has(e[0])) byOnset.set(e[0], []);
+            byOnset.get(e[0]).push(e[1]);
+        }
+        PIANO_HAND_STEPS[v] = [...byOnset.entries()].sort((a, b) => a[0] - b[0]).map(([onset, notes]) => {
+            const sorted = [...notes].sort((a, b) => a - b);
+            const half = Math.ceil(sorted.length / 2);
+            const lower = sorted.slice(0, sorted.length - half || 1);
+            const upper = sorted.slice(sorted.length - half);
+            const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+            let up = avg(upper), low = avg(lower);
+            if (sorted.length === 1) { if (v === 0) low = up - 12; else up = low + 12; }
+            return { onset, up, low };
+        });
+    }
+    let pianoHandPos = {};
+    let musicStartCtxTime = 0;
+
     function playNote(freq, duration, volume = 0.2, type = 'triangle', when = 0) {
         if (!audioCtx) return;
         const t = Math.max(when, audioCtx.currentTime);
@@ -722,6 +745,7 @@
     function startMusicSequence() {
         nextStepIndex = 0;
         nextStepTime = audioCtx.currentTime + 0.08;
+        musicStartCtxTime = nextStepTime;
         if (musicTimer) clearInterval(musicTimer);
         musicTimer = setInterval(schedulerTick, 30);
     }
@@ -744,6 +768,11 @@
 
     function stopPianoMusic() {
         isPlayingMusic = false;
+        pianoHandPos = {};
+        if (document.getElementById('sittingMode').value === 'piano') {
+            if (personA) poseHandsOnKeys(personA);
+            if (personB) poseHandsOnKeys(personB);
+        }
         if (musicTimer) {
             clearInterval(musicTimer);
             musicTimer = null;
@@ -954,7 +983,13 @@
             const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.05, PIANO_HEIGHT + 0.4, 0.65), blackPianoMat);
             sideR.position.set(0.825, (PIANO_HEIGHT + 0.4)/2, 0.325);
             piano.add(sideR);
-            const whiteKeys = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.02, 0.15), whiteKeyMat);
+            const keybed = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.3), blackPianoMat);
+        keybed.position.set(0, PIANO_HEIGHT - 0.04, 0.15);
+        piano.add(keybed);
+        const cabinet = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.53, 0.43), blackPianoMat);
+        cabinet.position.set(0, 0.265, 0.435);
+        piano.add(cabinet);
+        const whiteKeys = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.02, 0.15), whiteKeyMat);
             whiteKeys.position.set(0, PIANO_HEIGHT, 0.075);
             piano.add(whiteKeys);
             
@@ -1264,6 +1299,33 @@
                 stageGroup.remove(p.sprite);
                 p.sprite.material.dispose();
                 particles.splice(i, 1);
+            }
+        }
+
+        // ピアノ連弾: 両手が声部の音の高さに合わせて鍵盤の上を移動し、発音の瞬間に少し沈む
+        if (isPlayingMusic && audioCtx && personA && personB && document.getElementById('sittingMode').value === 'piano') {
+            const beatPos = ((audioCtx.currentTime - musicStartCtxTime) / 0.4) % ODE9_TOTAL_BEATS;
+            if (beatPos >= 0) {
+                [[personA, 0, 'A'], [personB, 1, 'B']].forEach(([person, voice, pk]) => {
+                    let cur = null, dip = 0;
+                    for (const st of PIANO_HAND_STEPS[voice]) { if (st.onset <= beatPos) cur = st; else break; }
+                    if (!cur) return;
+                    for (const st of PIANO_HAND_STEPS[voice]) { const dd = beatPos - st.onset; if (dd >= 0 && dd < 0.6) dip = Math.max(dip, Math.exp(-dd / 0.15)); }
+                    [[person.arms[0], cur.up, pk + '0'], [person.arms[1], cur.low, pk + '1']].forEach(([arm, avg, key]) => {
+                        const x = Math.max(-0.48, Math.min(0.48, (60 - avg) * 0.0125));
+                        const want = new THREE.Vector3(x, PIANO_HEIGHT - CHAIR_HEIGHT + 0.01 - 0.012 * dip, 0.58);
+                        const S = arm.anchor.position;
+                        const d = want.sub(S);
+                        const dist = Math.min(d.length(), arm.totalLen * 0.97);
+                        const target = S.clone().addScaledVector(d.normalize(), dist);
+                        if (!pianoHandPos[key]) {
+                            const tipW = arm.elbow.localToWorld(new THREE.Vector3(0, -arm.foreLen, 0));
+                            pianoHandPos[key] = arm.anchor.parent.worldToLocal(tipW);
+                        }
+                        pianoHandPos[key].lerp(target, 0.45);
+                        poseArmTo(arm, pianoHandPos[key]);
+                    });
+                });
             }
         }
 
